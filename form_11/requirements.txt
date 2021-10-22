@@ -1,0 +1,6 @@
+google-cloud-bigquery
+pandas==1.2.4
+pyarrow==3.0.0
+pandas_gbq==0.15.0
+requests==2.25.1
+protobuf==3.19.0
