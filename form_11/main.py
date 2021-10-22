@@ -15,7 +15,7 @@ import pyarrow
 
 ## DEPLOY
 ## gcloud functions deploy form_11 --entry-point main --runtime python37 --trigger-resource cbac_topic_2 --trigger-event google.pubsub.topic.publish --timeout 540s
-## gcloud scheduler jobs create pubsub cbac_nightly --schedule "5 4 * * * (America/Denver)" --topic cbac_topic_2 --message-body "rebuild form 11 submission data"
+## gcloud scheduler jobs create pubsub cbac_nightly --schedule "5 4 * * *" --topic cbac_topic_2 --message-body "rebuild form 11 submission data" --time-zone "America/Denver"
 
 
 parser = argparse.ArgumentParser()
