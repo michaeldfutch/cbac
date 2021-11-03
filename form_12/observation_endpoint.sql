@@ -135,6 +135,7 @@ else null end structs
 
 select direct.id entry_id
     , direct.date_created entry_date
+    , direct.date_updated date_updated
     , subject
     , forecast_zone forecast_zone_top
     , weather
