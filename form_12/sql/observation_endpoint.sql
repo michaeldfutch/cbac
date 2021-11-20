@@ -157,5 +157,4 @@ select direct.id entry_id
 
     from `cbac-306316.cbac_wordpress.obs_form_12_direct` direct
     join avy_arrays on direct.id = avy_arrays.id
-    join `cbac-306316.cbac_wordpress.wp_posts_view` posts on avy_arrays.id = posts.entry_id
-    
+    join `cbac-306316.cbac_wordpress.wp_posts_view` posts on avy_arrays.id = posts.entry_id  

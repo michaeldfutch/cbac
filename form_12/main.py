@@ -66,14 +66,7 @@ def main(data, context):
 
     df = None
     url = 'https://cbavalanchecenter.org/wp-json/gf/v2/forms/12/entries?_labels=1'
-    sql = "select max(id) max_id from cbac_wordpress.obs_form_12_direct"
-
-    # find the max current id if it exists
-    try:
-        max_id = int(pandas_gbq.read_gbq(sql, project_id=PROJECT_ID).iloc[0]['max_id'])
-    except:
-        logging.info("Table obs_form_12_direct does not exist, building from scratch")
-        max_id = 0
+    sql = "select max(date_updated) max_date from cbac_wordpress.obs_form_12_direct"
 
     # gather entries until we start to get old ones
     page_size = 20
@@ -81,16 +74,17 @@ def main(data, context):
     page = 1
     while True:
         r = requests.get(url=url, auth=HTTPBasicAuth(CLIENT_KEY, CLIENT_SECRET), json={'paging': 
-                                                                                        {'current_page': page,
-                                                                                        'page_size':page_size }})
+                                                                                            {'current_page': page,
+                                                                                            'page_size':page_size },
+                                                                                        'sorting':
+                                                                                            {'key':'date_updated',
+                                                                                            'direction':'ASC'}})
         
 
         content = json.loads(r._content.decode('utf-8'))
         entries.extend(content['entries'])
         page += 1    
         if len(content['entries']) == 0:
-            break
-        if int(entries[-1]['id']) <= max_id:
             break
 
     labels = content['_labels']
@@ -100,9 +94,6 @@ def main(data, context):
     ## loop through the entries to build a dataframe
     loop = 0   
     for entry in entries:
-        if int(entry['id']) <= max_id:
-            logging.info("Stopping: Remaining data already loaded")
-            break
         
         form_fields = {}
 
@@ -135,7 +126,7 @@ def main(data, context):
 
     # append to existing table or build it if it doesn't exist
     if df is not None:
-        pandas_gbq.to_gbq(df, 'cbac_wordpress.obs_form_12_direct', project_id=PROJECT_ID, if_exists='append')
+        pandas_gbq.to_gbq(df, 'cbac_wordpress.obs_form_12_direct', project_id=PROJECT_ID, if_exists='replace')
 
 
     ## TODO: Check for posts instead of using the zap and replace `cbac-306316.cbac_wordpress.wp_posts_view` in query below
@@ -145,24 +136,11 @@ def main(data, context):
     endpoint_table  =  pandas_gbq.read_gbq(sql, project_id=PROJECT_ID)
     pandas_gbq.to_gbq(endpoint_table, 'cbac_wordpress.observation_endpoint', project_id=PROJECT_ID, if_exists='replace')
 
-    # bq_client = bigquery.Client()
+    # rebuild long avy table table    
+    sql = file_to_string(config.config_vars['sql_file_path_2'])
+    long_table  =  pandas_gbq.read_gbq(sql, project_id=PROJECT_ID)
+    pandas_gbq.to_gbq(long_table, 'cbac_wordpress.long_avy_table', project_id=PROJECT_ID, if_exists='replace')
 
-    # try:
-    #     current_time = datetime.datetime.utcnow()
-    #     log_message = Template('Cloud Function was triggered on $time')
-    #     logging.info(log_message.safe_substitute(time=current_time))
-
-    #     try:
-    #         execute_query(bq_client)
-
-    #     except Exception as error:
-    #         log_message = Template('Query failed due to '
-    #                                '$message.')
-    #         logging.error(log_message.safe_substitute(message=error))
-
-    # except Exception as error:
-    #     log_message = Template('$error').substitute(error=error)
-    #     logging.error(log_message)
 
     ## Export latest tables to sheets
     scope = ['https://spreadsheets.google.com/feeds',
@@ -175,14 +153,20 @@ def main(data, context):
     sh = gc.open_by_key(spreadsheet_key)
     obs_sheet = sh.get_worksheet(0)
     endpoint_sheet = sh.get_worksheet(1)
+    long_sheet = sh.get_worksheet(2)
     # get full df
-    form_12 = pandas_gbq.read_gbq('select * from cbac_wordpress.obs_form_12_direct')
+    form_12 = pandas_gbq.read_gbq('select * except(email, first, last, ip) from cbac_wordpress.obs_form_12_direct order by id')
     set_with_dataframe(obs_sheet, form_12)
 
     # observation_endpoint
     # get full df
-    obs_endpoint = pandas_gbq.read_gbq('select * from cbac_wordpress.observation_endpoint')
+    obs_endpoint = pandas_gbq.read_gbq('select * from cbac_wordpress.observation_endpoint order by entry_id')
     set_with_dataframe(endpoint_sheet, obs_endpoint)
+
+    # avy_long_format
+    # get full df
+    avy_long_format = pandas_gbq.read_gbq('select * from cbac_wordpress.long_avy_table order by entry_id, obs_number')
+    set_with_dataframe(long_sheet, avy_long_format)
 
 if __name__ == '__main__':
     main('data', 'context')
