@@ -156,17 +156,17 @@ def main(data, context):
     long_sheet = sh.get_worksheet(2)
     # get full df
     form_12 = pandas_gbq.read_gbq('select * except(email, first, last, ip) from cbac_wordpress.obs_form_12_direct order by id')
-    set_with_dataframe(obs_sheet, form_12)
+    set_with_dataframe(obs_sheet, form_12, resize=True)
 
     # observation_endpoint
     # get full df
     obs_endpoint = pandas_gbq.read_gbq('select * from cbac_wordpress.observation_endpoint order by entry_id')
-    set_with_dataframe(endpoint_sheet, obs_endpoint)
+    set_with_dataframe(endpoint_sheet, obs_endpoint, resize=True)
 
     # avy_long_format
     # get full df
-    avy_long_format = pandas_gbq.read_gbq('select * from cbac_wordpress.long_avy_table order by entry_id, obs_number')
-    set_with_dataframe(long_sheet, avy_long_format)
+    avy_long_format = pandas_gbq.read_gbq('select * from cbac_wordpress.long_avy_table order by estimated_avalanche_date, forecast_zone, location')
+    set_with_dataframe(long_sheet, avy_long_format, resize=True)
 
 if __name__ == '__main__':
     main('data', 'context')

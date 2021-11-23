@@ -1,12 +1,7 @@
 with 
 avy1 as(
     select 
-        direct.id entry_id,
-        direct.date_created entry_date,
-        direct.date_updated date_updated,
-        subject,
         forecast_zone,
-        1 as obs_number,
         estimated_avalanche_date as estimated_avalanche_date,
         location as location,
         REGEXP_EXTRACT(start_zone_elevation, r'\w+') as start_zone_elevation,
@@ -28,17 +23,13 @@ avy1 as(
         avg_width_feet as average_width,
         additional_comments as comments
     from `cbac-306316.cbac_wordpress.obs_form_12_direct` direct
+    join `cbac-306316.cbac_wordpress.wp_posts_view` posts on direct.id = posts.entry_id
     where aspect is not null
 ),
 
 avy2 as (
     select
-        direct.id entry_id,
-        direct.date_created entry_date,
-        direct.date_updated date_updated,
-        subject,
         forecast_zone,
-        2 as obs_number,
         estimated_avalanche_date_1 as estimated_avalanche_date,
         location_1 as location,
         REGEXP_EXTRACT(start_zone_elevation_1, r'\w+') as start_zone_elevation,
@@ -60,17 +51,13 @@ avy2 as (
         avg_width_feet_1 as average_width,
         additional_comments_1 as comments
     from `cbac-306316.cbac_wordpress.obs_form_12_direct` direct
+    join `cbac-306316.cbac_wordpress.wp_posts_view` posts on direct.id = posts.entry_id
     where aspect_1 is not null
 ),
 
 avy3 as (
     select
-        direct.id entry_id,
-        direct.date_created entry_date,
-        direct.date_updated date_updated,
-        subject,
         forecast_zone,
-        3 as obs_number,
         estimated_avalanche_date_2 as estimated_avalanche_date,
         location_2 as location,
         REGEXP_EXTRACT(start_zone_elevation_2, r'\w+') as start_zone_elevation,
@@ -92,17 +79,13 @@ avy3 as (
         avg_width_feet_2 as average_width,
         additional_comments_2 as comments
     from `cbac-306316.cbac_wordpress.obs_form_12_direct` direct
+    join `cbac-306316.cbac_wordpress.wp_posts_view` posts on direct.id = posts.entry_id
     where aspect_2 is not null
     ) ,
 
 avy4 as (
     select
-        direct.id entry_id,
-        direct.date_created entry_date,
-        direct.date_updated date_updated,
-        subject,
         forecast_zone,
-        4 as obs_number,
         estimated_avalanche_date_3 as estimated_avalanche_date,
         location_3 as location,
         REGEXP_EXTRACT(start_zone_elevation_3, r'\w+') as start_zone_elevation,
@@ -124,16 +107,12 @@ avy4 as (
         avg_width_feet_3 as average_width,
         additional_comments_3 as comments
     from `cbac-306316.cbac_wordpress.obs_form_12_direct` direct
+    join `cbac-306316.cbac_wordpress.wp_posts_view` posts on direct.id = posts.entry_id
     where aspect_3 is not null
 ) ,
 avy5 as (
     select
-        direct.id entry_id,
-        direct.date_created entry_date,
-        direct.date_updated date_updated,
-        subject,
         forecast_zone,
-        5 as obs_number,
         estimated_avalanche_date_4 as estimated_avalanche_date,
         location_4 as location,
         REGEXP_EXTRACT(start_zone_elevation_4, r'\w+') as start_zone_elevation,
@@ -155,6 +134,7 @@ avy5 as (
         avg_width_feet_4 as average_width,
         additional_comments_4 as comments
     from `cbac-306316.cbac_wordpress.obs_form_12_direct` direct
+    join `cbac-306316.cbac_wordpress.wp_posts_view` posts on direct.id = posts.entry_id
     where aspect_4 is not null
 ),
 
@@ -172,5 +152,5 @@ union_stmt as (
 
 select union_stmt.* 
 from union_stmt
-join `cbac-306316.cbac_wordpress.wp_posts_view` posts on union_stmt.entry_id = posts.entry_id
+
     
