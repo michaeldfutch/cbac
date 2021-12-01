@@ -11,9 +11,16 @@ import pyarrow
 from gspread_dataframe import set_with_dataframe
 import gspread
 from google.oauth2 import service_account
+import matplotlib.pyplot as plt
+import datetime
+import numpy as np
+import os
+from matplotlib import cm
+from google.cloud import storage
+
 
 ## DEPLOY
-## gcloud functions deploy form_12 --entry-point main --runtime python37 --trigger-resource cbac_topic_3 --trigger-event google.pubsub.topic.publish --timeout 540s
+## gcloud functions deploy form_12 --entry-point main --runtime python37 --trigger-resource cbac_topic_3 --trigger-event google.pubsub.topic.publish --timeout 540s --memory 1024MB
 ## gcloud scheduler jobs create pubsub cbac_nightly --schedule "5 4 * * *" --topic cbac_topic_3 --message-body "form 12 submission data" --time-zone "America/Denver"
 
 
@@ -54,6 +61,31 @@ def file_to_string(sql_path):
     with open(sql_path, 'r') as sql_file:
         return sql_file.read()
 
+def upload_blob(bucket_name, source_file_name, destination_blob_name):
+    """Uploads a file to the bucket."""
+    # The ID of your GCS bucket
+    # bucket_name = "your-bucket-name"
+    # The path to your file to upload
+    # source_file_name = "local/path/to/file"
+    # The ID of your GCS object
+    # destination_blob_name = "storage-object-name"
+
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+
+    blob.upload_from_filename(source_file_name)
+    
+    metadata = {"Cache-control":"max-age=0"}
+    blob.metadata = metadata
+    blob.patch()
+    
+    print(
+        "File {} uploaded to {}.".format(
+            source_file_name, destination_blob_name
+        )
+    )
+
 
 def main(data, context):
     
@@ -62,6 +94,7 @@ def main(data, context):
     CLIENT_SECRET = config.config_vars['CLIENT_SECRET']
     PROJECT_ID = config.config_vars['project_id']
     KEYFILE =  config.config_vars['credentials']
+    PATH = os.getcwd()
     #credentials = service_account.Credentials.from_service_account_file(config.config_vars['credentials'])
 
     df = None
@@ -167,6 +200,88 @@ def main(data, context):
     # get full df
     avy_long_format = pandas_gbq.read_gbq('select * from cbac_wordpress.long_avy_table order by estimated_avalanche_date, forecast_zone, location')
     set_with_dataframe(long_sheet, avy_long_format, resize=True)
+
+
+    ### plot avys
+    r_grids = (1.5,2.25)
+
+    r_anchors = {'BTL': (3+r_grids[1])/2, 'NTL': (r_grids[1]+r_grids[0])/2, 'ATL': 2/3 * r_grids[0]}
+    thetas = []
+    dirs = ['E','NE','N','NW','W','SW','S','SE']
+    distances = [3.3,3.3,3.1,3.3,3.3,3.3,3.3,3.3]
+    align=['right','center','center','center','left','center','center','center']
+    x_anchors = {}
+    for i in range(8):
+        thetas.append(22.5 + 45 * (i))
+        x_anchors[dirs[i]] =  45 * (i)
+    
+    sizes = {'D1':10,
+         'D1.5':50,
+         'D2':100,
+         'D2.5':200,
+         'D3':400,
+         'D3.5':600,
+         'D4':800,
+         'D4.5':1000,
+         'D5':1200}
+
+    avy_long_format['polar_x'] = avy_long_format['aspect'].apply(lambda x: np.deg2rad(x_anchors[x]) + np.random.normal()*.1)
+    avy_long_format['polar_y'] = avy_long_format['start_zone_elevation'].apply(lambda x: r_anchors[x]+ np.random.normal()*.15)
+    avy_long_format['point_size'] = avy_long_format['destructive_size'].apply(lambda x: sizes[x])
+    
+    time_cutoff = 21
+    avy_long_format['days_old'] = (time_cutoff-(pd.to_datetime("today") - pd.to_datetime(avy_long_format['estimated_avalanche_date'])) / np.timedelta64(1, 'D'))/time_cutoff
+    avy_long_format['days_old'] = avy_long_format['days_old'].mask(avy_long_format['days_old'] < 0, 0)
+
+    days = datetime.timedelta(time_cutoff)
+    today = pd.Timestamp.date(pd.to_datetime("today"))
+    begin = today - days
+    title = f'''CBAC Avalanche Observations
+    {begin} to {today}'''
+
+
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot(projection='polar')
+
+    x, y, s, c = avy_long_format['polar_x'], avy_long_format['polar_y'], avy_long_format['point_size'], avy_long_format['days_old']
+
+    ax.set_yticklabels([])
+    ax.set_rgrids(r_grids)
+    ax.set_ylim(0,3)
+    scatter = ax.scatter( x, y, s, c=c, cmap=cm.GnBu, marker='o')
+
+    cbar = fig.colorbar(scatter, ticks=[0, .85], fraction=0.03, pad=0.06)
+    cbar.ax.set_yticklabels(['Less Recent', 'More Recent'])# vertically oriented colorbar
+
+    d_labels = ["D1", "D2", "D3", "D4", "D5"]
+    markers = []
+    for i in range(len(d_labels)):
+        markers.append(plt.scatter([],[], s=sizes[d_labels[i]], label=d_labels[i], color="lightblue"))
+
+    plt.legend(handles=markers, loc="lower center", ncol=5, bbox_to_anchor=(.5, -.15), frameon=False)
+
+    ax.set_thetagrids(tuple(thetas), labels = [])
+
+    tick = [ax.get_rmax(),ax.get_rmax()*0.97]
+    i = 0
+    for t  in np.deg2rad(np.arange(0,360,45)):
+        ax.plot([t,t], tick, lw=0.72, color="k")
+        plt.text(t,distances[i],dirs[i], snap=True, horizontalalignment = align[i], fontsize=12)
+        i+=1
+        
+    plt.title(title, y=1.0, pad=25)
+    plt.tight_layout()
+    
+    filename = 'avys.jpg'
+    source_file_name = '/tmp/' + filename
+    
+
+    plt.savefig(source_file_name, format='jpg' )
+    plt.close()
+
+    bucket_name = 'cbac-306316.appspot.com'
+
+    upload_blob(bucket_name, source_file_name, filename)
 
 if __name__ == '__main__':
     main('data', 'context')
