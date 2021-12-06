@@ -14,9 +14,8 @@ from google.oauth2 import service_account
 import matplotlib.pyplot as plt
 import datetime
 import numpy as np
-import os
 from matplotlib import cm
-from google.cloud import storage
+from utils import *
 
 
 ## DEPLOY
@@ -36,57 +35,6 @@ logging.basicConfig( level=args.loglevel.upper() )
 logging.info( 'Logging now setup.' )
 
 
-### helper functions
-def flatten_dict(D):
-    new_dict = {}
-    for key, value in D.items():
-        if type(value) == dict:
-            for k, v in value.items():
-                new_dict[k] = v
-        else:
-            new_dict[key] = value
-    return new_dict
-
-def clean(string):
-    return string.lower().replace(' ','_').replace("'",'').replace('?','').replace('(','').replace(')','').replace('.','')
-
-
-def file_to_string(sql_path):
-    """Converts a SQL file holding a SQL query to a string.
-    Args:
-        sql_path: String containing a file path
-    Returns:
-        String representation of a file's contents
-    """
-    with open(sql_path, 'r') as sql_file:
-        return sql_file.read()
-
-def upload_blob(bucket_name, source_file_name, destination_blob_name):
-    """Uploads a file to the bucket."""
-    # The ID of your GCS bucket
-    # bucket_name = "your-bucket-name"
-    # The path to your file to upload
-    # source_file_name = "local/path/to/file"
-    # The ID of your GCS object
-    # destination_blob_name = "storage-object-name"
-
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(destination_blob_name)
-
-    blob.upload_from_filename(source_file_name)
-    
-    metadata = {"Cache-control":"max-age=0"}
-    blob.metadata = metadata
-    blob.patch()
-    
-    print(
-        "File {} uploaded to {}.".format(
-            source_file_name, destination_blob_name
-        )
-    )
-
-
 def main(data, context):
     
     # set api key
@@ -94,12 +42,9 @@ def main(data, context):
     CLIENT_SECRET = config.config_vars['CLIENT_SECRET']
     PROJECT_ID = config.config_vars['project_id']
     KEYFILE =  config.config_vars['credentials']
-    PATH = os.getcwd()
-    #credentials = service_account.Credentials.from_service_account_file(config.config_vars['credentials'])
 
     df = None
     url = 'https://cbavalanchecenter.org/wp-json/gf/v2/forms/12/entries?_labels=1'
-    sql = "select max(date_updated) max_date from cbac_wordpress.obs_form_12_direct"
 
     # gather entries until we start to get old ones
     page_size = 20
@@ -202,6 +147,14 @@ def main(data, context):
     set_with_dataframe(long_sheet, avy_long_format, resize=True)
 
 
+    # expand dataframe based on number_of_avalanches
+    expanded = pd.DataFrame()
+
+    for index, row in avy_long_format.iterrows():
+        for i in range(int(row['number_of_avalanches'])):
+            expanded = pd.concat([expanded, pd.DataFrame(row).transpose()], axis = 0, ignore_index=True)
+    avy_long_format = expanded
+
     ### plot avys
     r_grids = (1.5,2.25)
 
@@ -248,9 +201,8 @@ def main(data, context):
     ax.set_yticklabels([])
     ax.set_rgrids(r_grids)
     ax.set_ylim(0,3)
-    scatter = ax.scatter( x, y, s, c=c, cmap=cm.GnBu, marker='o')
-
-    cbar = fig.colorbar(scatter, ticks=[0, .85], fraction=0.03, pad=0.06)
+    scatter = ax.scatter( x, y, s, c=c, cmap=cm.GnBu, marker='o', vmin=0, vmax=1)
+    cbar = fig.colorbar(scatter, ticks=[0, 1], fraction=0.04)
     cbar.ax.set_yticklabels(['Less Recent', 'More Recent'])# vertically oriented colorbar
 
     d_labels = ["D1", "D2", "D3", "D4", "D5"]
