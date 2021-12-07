@@ -148,11 +148,16 @@ def main(data, context):
 
 
     # expand dataframe based on number_of_avalanches
-    expanded = pd.DataFrame()
 
+    time_cutoff = 21
+    avy_long_format['days_old'] = (time_cutoff-(pd.to_datetime("today") - pd.to_datetime(avy_long_format['estimated_avalanche_date'])) / np.timedelta64(1, 'D'))/time_cutoff
+    avy_long_format['days_old'] = avy_long_format['days_old'].mask(avy_long_format['days_old'] < 0, 0)
+
+    expanded = pd.DataFrame()
     for index, row in avy_long_format.iterrows():
-        for i in range(int(row['number_of_avalanches'])):
-            expanded = pd.concat([expanded, pd.DataFrame(row).transpose()], axis = 0, ignore_index=True)
+        if row['days_old'] > 0:
+            for i in range(int(row['number_of_avalanches'])):
+                expanded = pd.concat([expanded, pd.DataFrame(row).transpose()], axis = 0, ignore_index=True)
     avy_long_format = expanded
 
     ### plot avys
@@ -182,9 +187,6 @@ def main(data, context):
     avy_long_format['polar_y'] = avy_long_format['start_zone_elevation'].apply(lambda x: r_anchors[x]+ np.random.normal()*.15)
     avy_long_format['point_size'] = avy_long_format['destructive_size'].apply(lambda x: sizes[x])
     
-    time_cutoff = 21
-    avy_long_format['days_old'] = (time_cutoff-(pd.to_datetime("today") - pd.to_datetime(avy_long_format['estimated_avalanche_date'])) / np.timedelta64(1, 'D'))/time_cutoff
-    avy_long_format['days_old'] = avy_long_format['days_old'].mask(avy_long_format['days_old'] < 0, 0)
 
     days = datetime.timedelta(time_cutoff)
     today = pd.Timestamp.date(pd.to_datetime("today"))
