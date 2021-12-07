@@ -46,7 +46,7 @@ def main(data, context):
     df = None
     url = 'https://cbavalanchecenter.org/wp-json/gf/v2/forms/12/entries?_labels=1'
 
-    # gather entries until we start to get old ones
+
     page_size = 20
     entries = []
     page = 1
