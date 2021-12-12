@@ -20,7 +20,7 @@ from utils import *
 
 ## DEPLOY
 ## gcloud functions deploy form_12 --entry-point main --runtime python37 --trigger-resource cbac_topic_3 --trigger-event google.pubsub.topic.publish --timeout 540s --memory 1024MB
-## gcloud scheduler jobs create pubsub cbac_nightly --schedule "5 4 * * *" --topic cbac_topic_3 --message-body "form 12 submission data" --time-zone "America/Denver"
+## gcloud scheduler jobs create pubsub cbac_nightly --schedule "5 * * * *" --topic cbac_topic_3 --message-body "form 12 submission data" --time-zone "America/Denver"
 
 
 parser = argparse.ArgumentParser()
@@ -155,7 +155,7 @@ def main(data, context):
 
     expanded = pd.DataFrame()
     for index, row in avy_long_format.iterrows():
-        if row['days_old'] > 0:
+        if row['days_old'] > 0 and row['start_zone_elevation'] is not None and row['destructive_size'] is not None:
             for i in range(int(row['number_of_avalanches'])):
                 expanded = pd.concat([expanded, pd.DataFrame(row).transpose()], axis = 0, ignore_index=True)
     avy_long_format = expanded
