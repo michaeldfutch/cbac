@@ -16,6 +16,7 @@ import datetime
 import numpy as np
 from matplotlib import cm
 from utils import *
+import pytz
 
 
 ## DEPLOY
@@ -188,8 +189,9 @@ def main(data, context):
     avy_long_format['point_size'] = avy_long_format['destructive_size'].apply(lambda x: sizes[x])
     
 
+    local_tz = pytz.timezone('America/Denver')
     days = datetime.timedelta(time_cutoff)
-    today = pd.Timestamp.date(pd.to_datetime("today"))
+    today = pd.Timestamp.date(datetime.datetime.now().astimezone(local_tz))
     begin = today - days
     title = f'''CBAC Avalanche Observations
     {begin} to {today}'''
