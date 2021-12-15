@@ -31,3 +31,4 @@ of the content indicating the form entry id.
 * Re-map the integer fields on the form to be numeric instead of string to avoid things like '900-1000'. Not sure how the API handles changes to the forms.
 * Some duplicative code in observation_endpoints.sql and avy_long_format. (low priority)
 * Set up CI/CD so that google cloud function pulls from master copy of main.py instead of sending it up with the gcloud deploy function. (low priority)
+* Fix the jitter in the graph so that avalanches don't move around from day to day
