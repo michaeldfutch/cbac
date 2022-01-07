@@ -1,6 +1,8 @@
 with 
 avy1 as(
     select 
+        direct.id,
+        subject,
         forecast_zone,
         estimated_avalanche_date as estimated_avalanche_date,
         location as location,
@@ -29,6 +31,8 @@ avy1 as(
 
 avy2 as (
     select
+        direct.id,
+        subject,
         forecast_zone,
         estimated_avalanche_date_1 as estimated_avalanche_date,
         location_1 as location,
@@ -57,6 +61,8 @@ avy2 as (
 
 avy3 as (
     select
+        direct.id,
+        subject,
         forecast_zone,
         estimated_avalanche_date_2 as estimated_avalanche_date,
         location_2 as location,
@@ -85,6 +91,8 @@ avy3 as (
 
 avy4 as (
     select
+        direct.id,
+        subject,
         forecast_zone,
         estimated_avalanche_date_3 as estimated_avalanche_date,
         location_3 as location,
@@ -112,6 +120,8 @@ avy4 as (
 ) ,
 avy5 as (
     select
+        direct.id,
+        subject,
         forecast_zone,
         estimated_avalanche_date_4 as estimated_avalanche_date,
         location_4 as location,
