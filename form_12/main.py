@@ -18,6 +18,7 @@ from matplotlib import cm
 from utils import *
 import pytz
 
+DEBUG = False
 
 ## DEPLOY
 ## gcloud functions deploy form_12 --entry-point main --runtime python37 --trigger-resource cbac_topic_3 --trigger-event google.pubsub.topic.publish --timeout 540s --memory 1024MB
@@ -150,18 +151,26 @@ def main(data, context):
     set_with_dataframe(long_sheet, avy_long_format, resize=True)
 
 
-    # expand dataframe based on number_of_avalanches
 
+
+
+    # expand dataframe based on number_of_avalanches
     time_cutoff = 21
     avy_long_format['days_old'] = (time_cutoff-(pd.to_datetime("today") - pd.to_datetime(avy_long_format['estimated_avalanche_date'])) / np.timedelta64(1, 'D'))/time_cutoff
-    avy_long_format['days_old'] = avy_long_format['days_old'].mask(avy_long_format['days_old'] < 0, 0)
 
     expanded = pd.DataFrame()
     for index, row in avy_long_format.iterrows():
-        if row['days_old'] > 0 and row['start_zone_elevation'] is not None and row['destructive_size'] is not None:
+        if row['start_zone_elevation'] is not None and row['destructive_size'] is not None:
             for i in range(int(row['number_of_avalanches'])):
                 expanded = pd.concat([expanded, pd.DataFrame(row).transpose()], axis = 0, ignore_index=True)
-    avy_long_format = expanded
+    
+    # add the expanded avy long format to a table in bigquery with everything necessary for plotting for Reggie
+    pandas_gbq.to_gbq(avy_long_format, 'cbac_wordpress.long_avy_table_for_plot', project_id=PROJECT_ID, if_exists='replace')
+
+
+    # for current plot only use observations in last 21 days
+    avy_long_format['days_old'] = avy_long_format['days_old'].mask(avy_long_format['days_old'] < 0, 0)
+    avy_long_format = expanded[expanded['days_old'] > 0]
 
     ### plot avys
     r_grids = (1.5,2.25)
@@ -238,8 +247,8 @@ def main(data, context):
     plt.close()
 
     bucket_name = 'cbac-306316.appspot.com'
-
-    upload_blob(bucket_name, source_file_name, filename)
+    if not DEBUG:
+        upload_blob(bucket_name, source_file_name, filename)
 
 if __name__ == '__main__':
     main('data', 'context')

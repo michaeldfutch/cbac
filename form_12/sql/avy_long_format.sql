@@ -23,7 +23,8 @@ avy1 as(
         avg_crown_size_inches as average_crown_height,
         avg_vertical_run_feet as average_vertical_run,
         avg_width_feet as average_width,
-        additional_comments as comments
+        additional_comments as comments,
+        url
     from `cbac-306316.cbac_wordpress.obs_form_12_direct` direct
     join `cbac-306316.cbac_wordpress.wp_posts_view` posts on direct.id = posts.entry_id
     where aspect is not null
@@ -53,7 +54,8 @@ avy2 as (
         avg_crown_size_inches_1 as average_crown_height,
         avg_vertical_run_feet_1 as average_vertical_run,
         avg_width_feet_1 as average_width,
-        additional_comments_1 as comments
+        additional_comments_1 as comments,
+        url
     from `cbac-306316.cbac_wordpress.obs_form_12_direct` direct
     join `cbac-306316.cbac_wordpress.wp_posts_view` posts on direct.id = posts.entry_id
     where aspect_1 is not null
@@ -83,7 +85,8 @@ avy3 as (
         avg_crown_size_inches_2 as average_crown_height,
         avg_vertical_run_feet_2 as average_vertical_run,
         avg_width_feet_2 as average_width,
-        additional_comments_2 as comments
+        additional_comments_2 as comments,
+        url
     from `cbac-306316.cbac_wordpress.obs_form_12_direct` direct
     join `cbac-306316.cbac_wordpress.wp_posts_view` posts on direct.id = posts.entry_id
     where aspect_2 is not null
@@ -113,7 +116,8 @@ avy4 as (
         avg_crown_size_inches_3 as average_crown_height,
         avg_vertical_run_feet_3 as average_vertical_run,
         avg_width_feet_3 as average_width,
-        additional_comments_3 as comments
+        additional_comments_3 as comments,
+        url
     from `cbac-306316.cbac_wordpress.obs_form_12_direct` direct
     join `cbac-306316.cbac_wordpress.wp_posts_view` posts on direct.id = posts.entry_id
     where aspect_3 is not null
@@ -142,7 +146,8 @@ avy5 as (
         avg_crown_size_inches_4 as average_crown_height,
         avg_vertical_run_feet_4 as average_vertical_run,
         avg_width_feet_4 as average_width,
-        additional_comments_4 as comments
+        additional_comments_4 as comments,
+        url
     from `cbac-306316.cbac_wordpress.obs_form_12_direct` direct
     join `cbac-306316.cbac_wordpress.wp_posts_view` posts on direct.id = posts.entry_id
     where aspect_4 is not null
@@ -160,7 +165,13 @@ union_stmt as (
     select * from avy5
 )
 
-select union_stmt.* 
+select 
+    union_stmt.*
+    , CASE 
+        WHEN EXTRACT(MONTH FROM DATE(estimated_avalanche_date)) <= 8 THEN 
+            CAST(EXTRACT(YEAR FROM DATE(estimated_avalanche_date)) - 1 AS STRING) || '-' || CAST(EXTRACT(YEAR FROM DATE(estimated_avalanche_date)) AS STRING)
+        ELSE 
+            CAST(EXTRACT(YEAR FROM DATE(estimated_avalanche_date)) AS STRING) || '-' || CAST(EXTRACT(YEAR FROM DATE(estimated_avalanche_date)) + 1 AS STRING) END avy_season
 from union_stmt
 
     
