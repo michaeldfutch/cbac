@@ -164,6 +164,10 @@ def main(data, context):
             for i in range(int(row['number_of_avalanches'])):
                 expanded = pd.concat([expanded, pd.DataFrame(row).transpose()], axis = 0, ignore_index=True)
     
+
+    avy_long_format['random_angle'] = np.random.uniform(-18, 18, avy_long_format.shape[0])
+    avy_long_format['random_radius'] = avy_long_format['start_zone_elevation'].apply(lambda x: np.random.uniform(-2, 2) if x == 'ATL' else np.random.uniform(-1, 1))
+
     # add the expanded avy long format to a table in bigquery with everything necessary for plotting for Reggie
     pandas_gbq.to_gbq(avy_long_format, 'cbac_wordpress.long_avy_table_for_plot', project_id=PROJECT_ID, if_exists='replace')
 
