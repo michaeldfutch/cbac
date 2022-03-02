@@ -54,6 +54,7 @@ def main(data, context):
     page_size = 20
     entries = []
     page = 1
+
     while True:
         r = requests.get(url=url, auth=HTTPBasicAuth(CLIENT_KEY, CLIENT_SECRET), json={'paging': 
                                                                                             {'current_page': page,
@@ -73,37 +74,46 @@ def main(data, context):
     flat_labels = flatten_dict(labels)
 
 
+    # dict to keep track of number of times keys have been used
+    counter_dict = {}
+    for key, value in flat_labels.items():
+        counter_dict[clean(value)] = 0
+
+    # create a lookup table for the labels to match entries to clean labels
+    flat_label_clean = {}
+    for key, value in flat_labels.items():
+        if clean(flat_labels[key]) in flat_label_clean.values():
+            counter_dict[clean(flat_labels[key])] += 1
+            flat_label_clean[key] = clean(flat_labels[key] + '_' + str(counter_dict[clean(flat_labels[key])]))
+        else:
+            flat_label_clean[key] = clean(value)
+
+
     ## loop through the entries to build a dataframe
     loop = 0   
     for entry in entries:
-        
+
         form_fields = {}
 
-        # dict to keep track of number of times keys have been used
-        counter_dict = {}
-        for key, value in flat_labels.items():
-            counter_dict[clean(value)] = 0
-
         for key, value in entry.items():
-            try:
-                ## Need to iterate key names when labels are repeated e.g. aspect1, aspect2 etc
-                if clean(flat_labels[key]) in form_fields:
-                    counter_dict[clean(flat_labels[key])] += 1
-                    form_fields[clean(flat_labels[key] + '_' + str(counter_dict[clean(flat_labels[key])]))] = value
-                else:
-                    form_fields[clean(flat_labels[key])] = value
+            if key in flat_label_clean:
+                # use lookup
+                form_fields[flat_label_clean[key]] = value
+            else:
+                # use key itself e.g. `id`, `date_created`
+                form_fields[key] = value
 
-            except:
-                form_fields[clean(key)] = value
-        
         # pandas does not like empty lists as values
-        form_fields['photo_gallery'] = [form_fields['photo_gallery']]
+        try:
+            form_fields['photo_gallery'] = [form_fields['photo_gallery']]
+        except:
+            form_fields['photo_gallery'] = []
         
         if loop == 0:
             df = pd.DataFrame(form_fields, index = [loop,])
         else: 
             df = df.append(pd.DataFrame(form_fields, index = [loop,]))
-        
+
         loop += 1
 
     # append to existing table or build it if it doesn't exist
