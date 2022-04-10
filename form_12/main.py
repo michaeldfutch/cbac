@@ -133,6 +133,11 @@ def main(data, context):
     long_table  =  pandas_gbq.read_gbq(sql, project_id=PROJECT_ID)
     pandas_gbq.to_gbq(long_table, 'cbac_wordpress.long_avy_table', project_id=PROJECT_ID, if_exists='replace')
 
+    # rebuild long avy table table    
+    sql = file_to_string(config.config_vars['obs_not_approved'])
+    not_approved  =  pandas_gbq.read_gbq(sql, project_id=PROJECT_ID)
+    pandas_gbq.to_gbq(not_approved, 'cbac_wordpress.obs_not_approved', project_id=PROJECT_ID, if_exists='replace')
+
 
     ## Export latest tables to sheets
     scope = ['https://spreadsheets.google.com/feeds',
@@ -146,6 +151,8 @@ def main(data, context):
     obs_sheet = sh.get_worksheet(0)
     endpoint_sheet = sh.get_worksheet(1)
     long_sheet = sh.get_worksheet(2)
+    obs_not_approved_sheet = sh.get_worksheet(3)
+
     # get full df
     form_12 = pandas_gbq.read_gbq('select * except(email, first, last, ip) from cbac_wordpress.obs_form_12_direct order by id')
     set_with_dataframe(obs_sheet, form_12, resize=True)
@@ -160,7 +167,8 @@ def main(data, context):
     avy_long_format = pandas_gbq.read_gbq('select * from cbac_wordpress.long_avy_table order by estimated_avalanche_date, forecast_zone, location')
     set_with_dataframe(long_sheet, avy_long_format, resize=True)
 
-
+    # obs that haven't been approved to google sheets
+    set_with_dataframe(obs_not_approved_sheet, not_approved, resize=True)
 
 
 
@@ -175,15 +183,15 @@ def main(data, context):
                 expanded = pd.concat([expanded, pd.DataFrame(row).transpose()], axis = 0, ignore_index=True)
     
 
-    avy_long_format['random_angle'] = np.random.uniform(-18, 18, avy_long_format.shape[0])
-    avy_long_format['random_radius'] = avy_long_format['start_zone_elevation'].apply(lambda x: np.random.uniform(-2, 2) if x == 'ATL' else np.random.uniform(-1, 1))
+    expanded['random_angle'] = np.random.uniform(-18, 18, expanded.shape[0])
+    expanded['random_radius'] = expanded['start_zone_elevation'].apply(lambda x: np.random.uniform(-2, 2) if x == 'ATL' else np.random.uniform(-1, 1))
 
     # add the expanded avy long format to a table in bigquery with everything necessary for plotting for Reggie
-    pandas_gbq.to_gbq(avy_long_format, 'cbac_wordpress.long_avy_table_for_plot', project_id=PROJECT_ID, if_exists='replace')
+    pandas_gbq.to_gbq(expanded, 'cbac_wordpress.long_avy_table_for_plot', project_id=PROJECT_ID, if_exists='replace')
 
 
     # for current plot only use observations in last 21 days
-    avy_long_format['days_old'] = avy_long_format['days_old'].mask(avy_long_format['days_old'] < 0, 0)
+    #avy_long_format['days_old'] = avy_long_format['days_old'].mask(avy_long_format['days_old'] < 0, 0)
     avy_long_format = expanded[expanded['days_old'] > 0]
 
     ### plot avys
