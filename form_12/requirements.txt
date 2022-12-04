@@ -8,3 +8,4 @@ protobuf==3.19.0
 matplotlib==3.3.4
 google-cloud-bigquery
 google-cloud-storage
+db-dtypes==1.0.0

@@ -179,7 +179,11 @@ def main(data, context):
     expanded = pd.DataFrame()
     for index, row in avy_long_format.iterrows():
         if row['start_zone_elevation'] is not None and row['destructive_size'] is not None:
-            for i in range(int(row['number_of_avalanches'])):
+            if row['number_of_avalanches'] is None:
+                avs_seen = 1
+            else:
+                avs_seen = int(row['number_of_avalanches'])
+            for i in range(avs_seen):
                 expanded = pd.concat([expanded, pd.DataFrame(row).transpose()], axis = 0, ignore_index=True)
     
 
