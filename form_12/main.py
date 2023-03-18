@@ -47,6 +47,10 @@ def main(data, context):
     PROJECT_ID = config.config_vars['project_id']
     KEYFILE =  config.config_vars['credentials']
 
+
+    # update posts
+    update_posts(CLIENT_KEY, CLIENT_SECRET)
+
     df = None
     url = 'https://cbavalanchecenter.org/wp-json/gf/v2/forms/12/entries?_labels=1'
 

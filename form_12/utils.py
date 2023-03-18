@@ -1,4 +1,9 @@
 # utils 
+import pandas_gbq
+import pandas as pd
+import json
+import requests
+from requests.auth import HTTPBasicAuth
 
 
 def flatten_dict(D):
@@ -49,3 +54,45 @@ def upload_blob(bucket_name, source_file_name, destination_blob_name):
             source_file_name, destination_blob_name
         )
     )
+
+def update_posts(CLIENT_KEY, CLIENT_SECRET):
+
+    try:
+        max_mod_date = pandas_gbq.read_gbq('select max(modified) from cbac_wordpress.wp_posts_raw_v2', progress_bar_type=None).iloc[0]
+
+        if pd.isnull(max_mod_date[0]):
+            max_mod_date = '2021-10-27'
+            page_size = 50
+        else:
+            max_mod_date = str(max_mod_date[0])
+            page_size = 10
+    except:
+        max_mod_date = '2021-10-27'
+        page_size = 50
+
+
+    url = f'https://cbavalanchecenter.org/wp-json/wp/v2/posts/?_fields=id,title,link,date,modified,content'
+
+    page = 1
+
+    while True:
+        r = requests.get(url=url, auth=HTTPBasicAuth(CLIENT_KEY, CLIENT_SECRET), 
+                         json={'page': page,'per_page':page_size,
+                              'order':'desc',
+                               'orderby':'modified'
+                              }
+            )
+        content = json.loads(r._content.decode('utf-8'))   
+        page += 1
+        if len(content) == 0 or r.status_code == 400:
+            break
+        else:
+            posts_df = pd.json_normalize(content)
+            posts_df.columns = ['id','date','modified','url','title','content','content_protected']
+            posts_df = posts_df[posts_df['modified'].astype(str) > max_mod_date]
+            pandas_gbq.to_gbq(posts_df, destination_table='cbac_wordpress.wp_posts_raw_v2', if_exists='append', progress_bar=None)
+            print("Loaded", posts_df.shape[0], "posts")
+            
+            if posts_df.shape[0] == 0 or posts_df['modified'].min() < max_mod_date:
+                print("Breaking: No more updates")
+                break
